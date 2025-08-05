@@ -339,12 +339,14 @@ header h1 i { margin-right: 12px; color: var(--color-folder); }
         flex-direction: row; /* Mantém título e toggle na mesma linha */
         justify-content: space-between;
         align-items: center;
+        gap: 8px; /* Reduz o gap */
     }
     header h1 {
         font-size: 1.1em; /* Reduz o tamanho do título */
     }
     .header-controls {
         width: auto; /* Permite que o wrapper dos controles encolha */
+        gap: 8px;
     }
     .search-sort-wrapper {
         flex-direction: column;
@@ -353,12 +355,22 @@ header h1 i { margin-right: 12px; color: var(--color-folder); }
         margin-top: 12px;
     }
     
+    #toolbar {
+        gap: 10px; /* Reduz o espaçamento da toolbar */
+    }
+    .toolbar-left, .toolbar-right {
+        gap: 10px;
+    }
     .toolbar-group {
         flex-direction: row; /* Mantém botões lado a lado no grupo */
         justify-content: center;
     }
     .toolbar-group button {
         flex-grow: 1; /* Faz os botões dividirem o espaço */
+        padding: 8px 10px; /* Ajusta o padding dos botões */
+    }
+    #toolbar .fa {
+        margin-right: 6px;
     }
 
     #breadcrumbs {
