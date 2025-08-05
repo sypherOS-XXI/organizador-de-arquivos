@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizador de Arquivos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Biblioteca SheetJS para manipulação de Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    
+    <!-- Biblioteca JSZip para compactar arquivos -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="file-explorer-container">
+        <div class="file-explorer">
+            <header>
+                <div class="header-main">
+                    <h1><i class="fas fa-folder-open"></i> Organizador de Arquivos</h1>
+                    <div class="header-controls">
+                        <div class="search-sort-wrapper">
+                            <div class="search-container">
+                                <i class="fas fa-search"></i>
+                                <input type="search" id="search-input" placeholder="Buscar em tudo...">
+                            </div>
+                            <div class="sort-container">
+                                <select id="sort-select" title="Ordenar por">
+                                    <option value="name-asc">Nome (A-Z)</option>
+                                    <option value="name-desc">Nome (Z-A)</option>
+                                    <option value="date-desc">Data (Mais Recente)</option>
+                                    <option value="date-asc">Data (Mais Antigo)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="theme-toggle" title="Alterar Tema"><i class="fas fa-moon"></i></button>
+                    </div>
+                </div>
+                <div id="toolbar">
+                    <div class="toolbar-left">
+                        <div class="toolbar-group">
+                            <button id="new-folder" class="btn-primary" title="Nova Pasta"><i class="fas fa-folder-plus"></i> Nova Pasta</button>
+                            <button id="new-text-file" class="btn-primary" title="Novo Arquivo de Texto"><i class="fas fa-file-alt"></i> Novo Texto</button>
+                            <button id="new-spreadsheet" class="btn-primary" title="Nova Planilha"><i class="fas fa-file-excel"></i> Nova Planilha</button>
+                        </div>
+                        <span class="toolbar-separator-vertical"></span>
+                        <div class="toolbar-group">
+                            <button id="rename-item" class="btn-secondary" title="Renomear (F2)" disabled><i class="fas fa-edit"></i> Renomear</button>
+                            <button id="delete-item" class="btn-secondary" title="Excluir (Del)" disabled><i class="fas fa-trash-alt"></i> Excluir</button>
+                        </div>
+                    </div>
+                    <div class="toolbar-right">
+                        <div class="toolbar-group">
+                             <button id="import-file-btn" class="btn-secondary" title="Importar Arquivo do Computador"><i class="fas fa-upload"></i> Importar</button>
+                            <button id="reset-system" class="btn-secondary" title="Resetar todo o sistema"><i class="fas fa-sync-alt"></i> Resetar</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+    
+            <nav id="breadcrumbs"></nav>
+            <main id="file-list"></main>
+        </div>
+    </div>
+    
+    <!-- MODAL DO EDITOR DE TEXTO -->
+    <div id="text-editor-modal" class="modal-pane hidden">
+        <div class="modal-content">
+            <button id="close-text-editor" class="modal-close-btn" title="Fechar">×</button>
+            <h3 id="text-editor-title" class="modal-title"></h3>
+            <div class="modal-body">
+                <div id="text-editor-container">
+                    <div class="editor-toolbar"></div>
+                    <div id="text-editor" contenteditable="true"></div>
+                    <div class="editor-footer">
+                        <div class="editor-status-bar"><span id="word-count"></span><span> | </span><span id="char-count"></span></div>
+                        <div class="editor-actions">
+                            <button id="download-text-file" class="btn-secondary" title="Baixar arquivo"><i class="fas fa-download"></i> Baixar</button>
+                            <button id="save-text-file" class="save-btn"><i class="fas fa-save"></i> Salvar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL DO EDITOR DE PLANILHAS -->
+    <div id="spreadsheet-editor-modal" class="modal-pane hidden">
+        <div class="modal-content">
+            <button id="close-spreadsheet-editor" class="modal-close-btn" title="Fechar">×</button>
+            <h3 id="spreadsheet-editor-title" class="modal-title"></h3>
+            <div class="modal-body">
+                <div id="spreadsheet-container"></div>
+                <div class="editor-footer">
+                    <div class="editor-status-bar"><span id="spreadsheet-status"></span></div>
+                    <div class="editor-actions">
+                        <button id="download-spreadsheet" class="btn-secondary" title="Baixar arquivo (.xlsx)"><i class="fas fa-download"></i> Baixar</button>
+                        <button id="save-spreadsheet" class="save-btn"><i class="fas fa-save"></i> Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAIS DE AÇÃO (PROMPT, CONFIRM) -->
+    <div id="prompt-modal" class="modal-pane hidden">
+        <div class="modal-content modal-sm">
+            <h3 id="prompt-title" class="modal-title"></h3>
+            <div class="modal-body">
+                <label id="prompt-label" for="prompt-input"></label>
+                <input type="text" id="prompt-input" class="modal-input">
+            </div>
+            <div class="modal-actions">
+                <button id="prompt-cancel-btn" class="btn-secondary">Cancelar</button>
+                <button id="prompt-ok-btn" class="btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirm-modal" class="modal-pane hidden">
+        <div class="modal-content modal-sm">
+            <h3 id="confirm-title" class="modal-title"></h3>
+            <div class="modal-body"><p id="confirm-message"></p></div>
+            <div class="modal-actions">
+                <button id="confirm-cancel-btn" class="btn-secondary">Cancelar</button>
+                <button id="confirm-ok-btn" class="btn-danger">Confirmar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL DE SELEÇÃO DE FORMATO (PARA DOWNLOAD DE TEXTO) -->
+    <div id="format-select-modal" class="modal-pane hidden">
+        <div class="modal-content modal-sm">
+            <h3 class="modal-title">Selecionar Formato para Download</h3>
+            <div class="modal-body">
+                <label for="format-select-input" style="display: block; margin-bottom: 8px; font-weight: 500;">Formato:</label>
+                <select id="format-select-input" class="modal-input">
+                    <option value="txt">Texto Simples (.txt)</option>
+                    <option value="doc">Documento Word (.doc)</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button id="format-select-cancel-btn" class="btn-secondary">Cancelar</button>
+                <button id="format-select-ok-btn" class="btn-primary">Baixar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MENU DE CONTEXTO PRINCIPAL -->
+    <div id="context-menu" class="hidden">
+        <ul>
+            <li id="context-open"><i class="fas fa-folder-open"></i> Abrir/Ver</li>
+            <li id="context-download"><i class="fas fa-download"></i> Baixar</li>
+            <li id="context-rename"><i class="fas fa-edit"></i> Renomear</li>
+            <li id="context-delete"><i class="fas fa-trash-alt"></i> Excluir</li>
+        </ul>
+    </div>
+
+    <!-- INPUT OCULTO PARA IMPORTAÇÃO -->
+    <input type="file" id="file-import-input" style="display: none;" accept=".txt,.xlsx">
+
+    <script src="main.js"></script>
+</body>
+</html>
