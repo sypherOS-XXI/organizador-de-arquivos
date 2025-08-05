@@ -1,1238 +1,413 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // Chave para o LocalStorage
-    const LS_KEY = 'organizadorDeArquivosData';
+/* --- RAÍZ E VARIÁVEIS DE DESIGN --- */
+:root {
+    --font-family: 'Inter', sans-serif;
+    
+    /* --- Tema Claro (Padrão) --- */
+    --color-primary: #007aff;
+    --color-primary-dark: #0056b3;
+    --color-primary-light: #e6f2ff;
+    --color-text-primary: #1d2939;
+    --color-text-secondary: #667085;
+    --color-bg-body: #f4f7fa;
+    --color-bg-main: #ffffff;
+    --color-border: #e2e8f0;
+    --color-bg-header: #ffffff;
+    --color-bg-hover: #f1f5f9;
+    --color-glass-bg: rgba(255, 255, 255, 0.75);
+    --color-glass-border: rgba(255, 255, 255, 0.5);
+    
+    /* --- Cores Comuns --- */
+    --color-danger: #ef4444;
+    --color-danger-dark: #b91c1c;
+    --color-danger-light: #fee2e2;
+    --color-folder: #ffb703;
+    --color-excel: #1d6f42;
 
-    // --- REFERÊNCIAS AO DOM ---
-    const fileList = document.getElementById('file-list');
-    const breadcrumbs = document.getElementById('breadcrumbs');
-    const searchInput = document.getElementById('search-input');
-    const sortSelect = document.getElementById('sort-select');
-    const themeToggle = document.getElementById('theme-toggle');
-    const toolbar = {
-        newFolder: document.getElementById('new-folder'),
-        newTextFile: document.getElementById('new-text-file'),
-        newSpreadsheet: document.getElementById('new-spreadsheet'),
-        rename: document.getElementById('rename-item'),
-        delete: document.getElementById('delete-item'),
-        importFileBtn: document.getElementById('import-file-btn'),
-        resetSystem: document.getElementById('reset-system')
-    };
-    const fileImportInput = document.getElementById('file-import-input');
-    const contextMenu = {
-        element: document.getElementById('context-menu'),
-        open: document.getElementById('context-open'),
-        download: document.getElementById('context-download'),
-        rename: document.getElementById('context-rename'),
-        delete: document.getElementById('context-delete'),
-    };
-    const textEditorModal = {
-        pane: document.getElementById('text-editor-modal'),
-        closeBtn: document.getElementById('close-text-editor'),
-        title: document.getElementById('text-editor-title'),
-        editor: document.getElementById('text-editor'),
-        saveBtn: document.getElementById('save-text-file'),
-        downloadBtn: document.getElementById('download-text-file')
-    };
-    const spreadsheetEditorModal = {
-        pane: document.getElementById('spreadsheet-editor-modal'),
-        closeBtn: document.getElementById('close-spreadsheet-editor'),
-        title: document.getElementById('spreadsheet-editor-title'),
-        container: document.getElementById('spreadsheet-container'),
-        status: document.getElementById('spreadsheet-status'),
-        saveBtn: document.getElementById('save-spreadsheet'),
-        downloadBtn: document.getElementById('download-spreadsheet')
-    };
-    const promptModal = {
-        pane: document.getElementById('prompt-modal'),
-        title: document.getElementById('prompt-title'),
-        label: document.getElementById('prompt-label'),
-        input: document.getElementById('prompt-input'),
-        okBtn: document.getElementById('prompt-ok-btn'),
-        cancelBtn: document.getElementById('prompt-cancel-btn')
-    };
-    const confirmModal = {
-        pane: document.getElementById('confirm-modal'),
-        title: document.getElementById('confirm-title'),
-        message: document.getElementById('confirm-message'),
-        okBtn: document.getElementById('confirm-ok-btn'),
-        cancelBtn: document.getElementById('confirm-cancel-btn')
-    };
-    const formatSelectModal = {
-        pane: document.getElementById('format-select-modal'),
-        input: document.getElementById('format-select-input'),
-        okBtn: document.getElementById('format-select-ok-btn'),
-        cancelBtn: document.getElementById('format-select-cancel-btn')
-    };
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+}
 
-    // --- REFERÊNCIAS AO DOM PARA NAVEGAÇÃO DE PÁGINAS ---
-    const mainAppContainer = document.querySelector('.file-explorer-container');
-    const pageViewContainer = document.querySelector('.page-view-container');
-    const staticPageContainers = {
-        privacy: document.getElementById('privacy-policy-page'),
-        terms: document.getElementById('terms-of-use-page'),
-        contact: document.getElementById('contact-page'),
-        cookies: document.getElementById('cookies-policy-page'),
-    };
-    const navLinks = {
-        privacy: document.getElementById('nav-privacy-policy'),
-        terms: document.getElementById('nav-terms-of-use'),
-        contact: document.getElementById('nav-contact'),
-        cookies: document.getElementById('nav-cookies-policy'),
-    };
+.dark-theme {
+    /* --- Tema Escuro --- */
+    --color-primary: #0a84ff;
+    --color-primary-dark: #0060d1;
+    --color-primary-light: #1c2c47;
+    --color-text-primary: #f8f9fa;
+    --color-text-secondary: #aeb8c4;
+    --color-bg-body: #0a0a0a;
+    --color-bg-main: #161616;
+    --color-border: #363636;
+    --color-bg-header: #1e1e1e;
+    --color-bg-hover: #262626;
+    --color-glass-bg: rgba(30, 30, 30, 0.75);
+    --color-glass-border: rgba(54, 54, 54, 0.75);
+    --color-excel: #21a366;
+}
 
-    // --- ESTADO DA APLICAÇÃO ---
-    let fileSystem, currentFolderId = 'root',
-        selectedItemIds = [],
-        focusedItemId = null,
-        sortState = { by: 'name', order: 'asc' },
-        isSearching = false,
-        activeNode = null,
-        hasUnsavedChanges = false;
+/* --- ESTILOS GERAIS E RESET --- */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-family); background-color: var(--color-bg-body); color: var(--color-text-primary); -webkit-font-smoothing: antialiased; user-select: none; transition: background-color 0.3s ease, color 0.3s ease; }
 
-    // --- FUNÇÕES PRINCIPAIS ---
-    function init() {
-        loadFileSystem();
-        initTheme();
-        render();
-        setupEventListeners();
-        setupNavigation();
+/* --- CONTROLES DE VISIBILIDADE E ANIMAÇÃO DE PÁGINA --- */
+.page-view-container,
+.file-explorer-container {
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.view-hidden {
+    opacity: 0;
+    transform: scale(0.98);
+    pointer-events: none;
+    position: absolute;
+    width: 100%;
+    top: 0;
+    left: 0;
+}
+
+
+/* --- LAYOUT PRINCIPAL --- */
+.file-explorer-container { padding: 40px 20px; min-height: calc(100vh - 70px); }
+.file-explorer { max-width: 1200px; margin: 0 auto; background: var(--color-bg-main); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border: 1px solid var(--color-border); overflow: hidden; transition: background-color 0.3s ease, border-color 0.3s ease; }
+
+/* --- CABEÇALHO E NOVOS CONTROLES --- */
+header { padding: 16px 24px; border-bottom: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 16px; background-color: var(--color-bg-header); transition: background-color 0.3s ease, border-color 0.3s ease; }
+.header-main { display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 16px; }
+header h1 { margin: 0; font-size: 1.25em; font-weight: 600; display: flex; align-items: center; }
+header h1 i { margin-right: 12px; color: var(--color-folder); }
+.header-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.search-sort-wrapper { display: flex; gap: 8px; flex-wrap: wrap; }
+.search-container { position: relative; display: flex; align-items: center; }
+.search-container i { position: absolute; left: 12px; color: var(--color-text-secondary); font-size: 0.9em; }
+#search-input, #sort-select { background-color: var(--color-bg-body); color: var(--color-text-primary); border: 1px solid var(--color-border); border-radius: var(--radius-md); font-family: var(--font-family); font-size: 0.9em; padding: 8px 12px; transition: all 0.2s ease; }
+#search-input { padding-left: 34px; width: 250px; }
+#search-input:focus, #sort-select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-light); outline: none; }
+#sort-select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
+.dark-theme #sort-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23aeb8c4' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); }
+#theme-toggle { font-size: 1.2em; background: none; border: none; color: var(--color-text-secondary); cursor: pointer; padding: 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+#theme-toggle:hover { background-color: var(--color-bg-hover); color: var(--color-text-primary); }
+
+#toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; width: 100%; }
+.toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.toolbar-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.toolbar-separator-vertical { width: 1px; height: 24px; background-color: var(--color-border); transition: background-color 0.3s ease; }
+
+#toolbar button { padding: 8px 14px; border-radius: var(--radius-md); cursor: pointer; font-size: 0.9em; font-family: var(--font-family); font-weight: 500; display: flex; align-items: center; gap: 8px; transition: all 0.2s ease; border: 1px solid transparent;}
+.btn-primary { background-color: var(--color-primary); color: white; border-color: var(--color-primary); }
+.btn-primary:hover { background-color: var(--color-primary-dark); border-color: var(--color-primary-dark); }
+#new-spreadsheet { background-color: var(--color-excel); border-color: var(--color-excel); }
+#new-spreadsheet:hover { background-color: #145a32; border-color: #145a32; }
+.btn-secondary { background-color: var(--color-bg-body); color: var(--color-text-secondary); border-color: var(--color-border); }
+.btn-secondary:not(:disabled):hover { background-color: var(--color-bg-hover); color: var(--color-text-primary); }
+.btn-danger { background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
+.btn-danger:hover { background-color: var(--color-danger-dark); border-color: var(--color-danger-dark); }
+#delete-item:not(:disabled):hover { background-color: var(--color-danger-light); color: var(--color-danger); border-color: var(--color-danger); }
+#toolbar button:disabled { background-color: var(--color-bg-body); color: var(--color-text-secondary); border-color: var(--color-border); opacity: 0.6; cursor: not-allowed; pointer-events: none; }
+
+/* --- BREADCRUMBS --- */
+#breadcrumbs { padding: 12px 24px; background-color: transparent; border-bottom: 1px solid var(--color-border); font-size: 0.9em; color: var(--color-text-secondary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; transition: all 0.3s ease; }
+.breadcrumb-link { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-md); text-decoration: none; color: var(--color-text-secondary); background-color: var(--color-bg-hover); transition: all 0.2s ease; }
+.breadcrumb-link:hover { background-color: var(--color-border); color: var(--color-text-primary); }
+.breadcrumb-link .fa-home { color: var(--color-primary); }
+.breadcrumb-separator { font-size: 1.2em; color: var(--color-border); }
+.breadcrumb-current { font-weight: 600; color: var(--color-text-primary); padding: 6px 4px; }
+
+/* --- LISTA DE ARQUIVOS --- */
+#file-list { min-height: 450px; padding: 24px; }
+.grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); align-items: start; gap: 16px; }
+.file-item { position: relative; cursor: pointer; }
+.file-item-inner { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 8px; border-radius: var(--radius-md); border: 2px solid transparent; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); text-align: center; }
+.file-item:hover .file-item-inner { transform: translateY(-4px); box-shadow: var(--shadow-md); background-color: var(--color-bg-hover); }
+.file-item.selected .file-item-inner { border-color: var(--color-primary); background-color: var(--color-primary-light); box-shadow: inset 0 0 0 1.5px var(--color-primary), 0 1px 2px rgba(0, 0, 0, 0.05); transform: translateY(-2px); }
+.file-item.focused .file-item-inner { box-shadow: inset 0 0 0 2px var(--color-primary), 0 1px 2px rgba(0, 0, 0, 0.05); }
+.file-item.selected .item-name { color: var(--color-primary); font-weight: 600; }
+.file-item.selected .fa-folder, .file-item.selected .fa-file-alt { color: var(--color-primary) !important; }
+.file-item.selected .fa-file-excel-stacked .fa-file { color: var(--color-primary); opacity: 0.6; }
+.file-item.selected .fa-file-excel-stacked .fa-table { color: var(--color-primary); }
+.file-item.drop-target .file-item-inner { transform: scale(1.05); box-shadow: 0 0 0 4px var(--color-primary-light); background-color: var(--color-primary-light); }
+.file-item .fa-folder, .file-item .fa-file-alt, .file-item .fa-file, .file-item .fa-file-excel-stacked { font-size: 3.5em; transition: color 0.2s ease; }
+.fa-folder { color: var(--color-folder); }
+.fa-file-alt { color: var(--color-primary); }
+.item-name { font-size: 0.875em; font-weight: 500; word-break: break-word; pointer-events: none; line-height: 1.4; transition: all 0.2s ease; }
+
+/* Visualização de Lista de Busca */
+.list-view { display: flex; flex-direction: column; gap: 4px; }
+.search-result-item { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: var(--radius-md); cursor: pointer; border: 2px solid transparent; transition: background-color 0.2s ease, border-color 0.2s ease; }
+.search-result-item:hover { background-color: var(--color-bg-hover); }
+.search-result-item.selected { border-color: var(--color-primary); background-color: var(--color-primary-light); }
+.search-result-item .item-icon { font-size: 1.5em; width: 1.5em; text-align: center; display: flex; align-items: center; justify-content: center; }
+.search-result-item .item-details { display: flex; flex-direction: column; }
+.search-result-item .item-name { font-size: 1em; font-weight: 500; }
+.search-result-item .item-path { font-size: 0.8em; color: var(--color-text-secondary); }
+
+/* --- PAINÉIS MODAIS --- */
+.modal-pane { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 24, 39, 0.3); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; transition: opacity 0.2s ease, visibility 0.2s ease; }
+.modal-pane.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.modal-pane.hidden .modal-content { transform: scale(0.95); }
+.modal-content { background: var(--color-glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--color-glass-border); box-shadow: var(--shadow-lg); transition: all 0.25s ease; padding: 24px; border-radius: var(--radius-lg); max-height: 90vh; overflow-y: auto; position: relative; color: var(--color-text-primary); width: 90%; max-width: 800px; }
+.modal-content.modal-sm { max-width: 400px; }
+.modal-close-btn { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.05); border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 1.5em; line-height: 1; cursor: pointer; color: var(--color-text-secondary); transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;}
+.modal-close-btn:hover { background: rgba(0,0,0,0.1); color: var(--color-text-primary); }
+.modal-title { margin-top: 0; border-bottom: 1px solid var(--color-border); padding-bottom: 16px; margin-bottom: 20px; font-weight: 600; }
+.modal-body { padding: 0 8px; }
+
+/* --- ESTILOS DOS MODAIS DE AÇÃO --- */
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--color-border); }
+.modal-actions button { padding: 8px 16px; font-weight: 500; }
+.modal-input { width: 100%; background-color: var(--color-bg-main); color: var(--color-text-primary); border: 1px solid var(--color-border); border-radius: var(--radius-md); font-family: var(--font-family); font-size: 1em; padding: 10px 12px; transition: all 0.2s ease; }
+.modal-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-light); outline: none; }
+#prompt-label { display: block; margin-bottom: 8px; font-weight: 500; }
+#confirm-message { margin: 0; line-height: 1.6; }
+
+/* --- MENU DE CONTEXTO --- */
+#context-menu { position: absolute; z-index: 2000; border-radius: var(--radius-md); padding: 6px; background: var(--color-glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--color-glass-border); box-shadow: var(--shadow-lg); transition: all 0.25s ease; }
+#context-menu.hidden { opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.95); }
+#context-menu ul { list-style: none; margin: 0; padding: 0; }
+#context-menu li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; font-size: 0.9em; font-weight: 500; border-radius: 6px; transition: all 0.15s ease; }
+#context-menu li:hover { background-color: var(--color-primary); color: white; }
+#context-menu i { width: 16px; text-align: center; }
+#context-menu li#context-delete:hover { background-color: var(--color-danger); }
+
+/* --- EDITOR DE TEXTO RICO --- */
+#text-editor-container { border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column; background-color: var(--color-bg-main); transition: all 0.3s ease; }
+.editor-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 8px; background-color: var(--color-bg-hover); border-bottom: 1px solid var(--color-border); transition: all 0.3s ease; }
+.editor-toolbar button { background: none; border: 1px solid transparent; border-radius: 6px; width: 32px; height: 32px; font-size: 1em; color: var(--color-text-secondary); cursor: pointer; transition: all 0.2s ease; }
+.editor-toolbar button:hover { background-color: var(--color-border); color: var(--color-text-primary); }
+.editor-toolbar button.active { background-color: var(--color-primary-light); color: var(--color-primary); }
+.toolbar-separator { width: 1px; height: 20px; background-color: var(--color-border); margin: 0 4px; }
+#text-editor { min-height: 40vh; max-height: 55vh; padding: 16px; overflow-y: auto; outline: none; line-height: 1.6; }
+.editor-footer { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background-color: var(--color-bg-hover); border-top: 1px solid var(--color-border); transition: all 0.3s ease; }
+.editor-actions { display: flex; align-items: center; gap: 8px; }
+.save-btn { background-color: var(--color-primary); color: white; border: none; padding: 8px 14px; border-radius: var(--radius-md); font-size: 0.9em; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s ease; }
+.save-btn:hover { background-color: var(--color-primary-dark); }
+.save-btn.saved { background-color: #28a745; }
+
+/* --- ESTILOS PARA O EDITOR DE PLANILHAS --- */
+#spreadsheet-container { border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: auto; max-height: 60vh; background-color: var(--color-bg-main); }
+.spreadsheet-table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+.spreadsheet-table th, .spreadsheet-table td { border: 1px solid var(--color-border); padding: 8px; min-width: 100px; text-align: left; transition: background-color 0.2s ease; }
+.spreadsheet-table th { background-color: var(--color-bg-hover); font-weight: 600; position: sticky; top: 0; z-index: 10; }
+.spreadsheet-table td { background-color: var(--color-bg-main); }
+.spreadsheet-table td[contenteditable="true"]:focus { outline: 2px solid var(--color-primary); box-shadow: inset 0 0 0 1px var(--color-primary); background-color: var(--color-primary-light); }
+
+/* --- ESTILO PARA O NOVO ÍCONE DE PLANILHA --- */
+.fa-file-excel-stacked { position: relative; display: inline-block; width: 1em; height: 1em; line-height: 1em; vertical-align: -0.125em; }
+.fa-file-excel-stacked .fa-file { position: absolute; left: 0; top: 0; font-size: 1em; color: var(--color-text-secondary); opacity: 0.5; transition: color 0.2s ease, opacity 0.2s ease; }
+.fa-file-excel-stacked .fa-table { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 0.5em; color: var(--color-excel); transition: color 0.2s ease; }
+
+/* --- PÁGINAS DE CONTEÚDO ESTÁTICO E RODAPÉ --- */
+.site-footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 0.9em;
+    color: var(--color-text-secondary);
+    background-color: var(--color-bg-main);
+    border-top: 1px solid var(--color-border);
+    transition: all 0.3s ease;
+}
+.footer-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.footer-nav a {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+.footer-nav a:hover {
+    color: var(--color-primary);
+    background-color: var(--color-bg-hover);
+}
+.footer-separator { margin: 0 4px; }
+
+.page-view-container { padding: 40px 20px; min-height: calc(100vh - 70px); }
+.page-content {
+    max-width: 850px;
+    margin: 0 auto;
+    background: var(--color-bg-main);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--color-border);
+    padding: 32px 48px;
+    color: var(--color-text-primary);
+    line-height: 1.7;
+    user-select: text;
+    display: none;
+    transition: all 0.3s ease;
+}
+.page-content.active { display: block; }
+.page-content h1 { font-size: 2em; margin-top: 0; margin-bottom: 1em; border-bottom: 1px solid var(--color-border); padding-bottom: 0.5em; font-weight: 700; }
+.page-content h2 { font-size: 1.5em; margin-top: 2em; margin-bottom: 1em; font-weight: 600; }
+.page-content p, .page-content ul { margin-bottom: 1em; }
+.page-content ul { padding-left: 20px; }
+.page-content a { color: var(--color-primary); text-decoration: none; font-weight: 500; }
+.page-content a:hover { text-decoration: underline; }
+.back-to-app-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 2em; padding: 10px 20px; font-weight: 500; border-radius: var(--radius-md); cursor: pointer; text-decoration: none; background-color: var(--color-primary); color: white; border: 1px solid var(--color-primary); transition: all 0.2s ease; }
+.back-to-app-btn:hover { background-color: var(--color-primary-dark); }
+
+/* Formulário de Contato */
+.contact-form { transition: opacity 0.3s ease; }
+.contact-form.hidden { opacity: 0; display: none; }
+.contact-form .form-group { margin-bottom: 1.5em; }
+.contact-form label { display: block; margin-bottom: 0.5em; font-weight: 500; }
+.contact-form .form-control { width: 100%; padding: 12px; font-size: 1em; font-family: var(--font-family); background-color: var(--color-bg-body); color: var(--color-text-primary); border: 1px solid var(--color-border); border-radius: var(--radius-md); transition: all 0.2s ease; user-select: text; }
+.contact-form .form-control:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-light); outline: none; }
+.contact-form textarea.form-control { min-height: 150px; resize: vertical; }
+.contact-form .submit-btn { padding: 12px 24px; font-size: 1em; font-weight: 500; cursor: pointer; background-color: var(--color-primary); color: white; border: none; border-radius: var(--radius-md); transition: all 0.2s ease; }
+.contact-form .submit-btn:hover { background-color: var(--color-primary-dark); }
+#contact-success-message { margin-top: 1.5em; padding: 1em; background-color: var(--color-primary-light); color: var(--color-primary-dark); border: 1px solid var(--color-primary); border-radius: var(--radius-md); transition: opacity 0.3s ease; }
+#contact-success-message.hidden { opacity: 0; display: none; }
+
+
+/* --- MEDIA QUERIES PARA RESPONSIVIDADE --- */
+
+/* Telas de Tablet */
+@media (max-width: 992px) {
+    .header-main {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .header-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+    #search-input {
+        width: 100%;
+        flex-grow: 1;
+    }
+    .search-sort-wrapper {
+        flex-grow: 1;
+        width: auto;
+    }
+}
+
+/* Telas de Celular Grandes e Tablets em Retrato */
+@media (max-width: 768px) {
+    .file-explorer-container, .page-view-container {
+        padding: 20px 15px;
+    }
+    #toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    .toolbar-left, .toolbar-right {
+        justify-content: center;
+    }
+    .toolbar-separator-vertical {
+        display: none;
+    }
+    .page-content {
+        padding: 24px;
+    }
+    .page-content h1 { font-size: 1.8em; }
+    .page-content h2 { font-size: 1.3em; }
+
+    /* Layout do rodapé do editor para melhor toque */
+    .editor-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    .editor-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .editor-actions .btn-secondary {
+        flex-grow: 1;
+        justify-content: center;
+    }
+    .editor-actions .save-btn {
+        flex-grow: 2;
+        justify-content: center;
+    }
+}
+
+/* Telas de Celular Pequenas */
+@media (max-width: 480px) {
+    header {
+        padding: 16px;
+    }
+    .header-main {
+        flex-direction: row; /* Mantém título e toggle na mesma linha */
+        justify-content: space-between;
+        align-items: center;
+    }
+    header h1 {
+        font-size: 1.1em; /* Reduz o tamanho do título */
+    }
+    .header-controls {
+        width: auto; /* Permite que o wrapper dos controles encolha */
+    }
+    .search-sort-wrapper {
+        flex-direction: column;
+        width: 100%;
+        order: 2; /* Move a busca para a próxima linha */
+        margin-top: 12px;
     }
     
-    function render() {
-        const searchTerm = searchInput.value.trim().toLowerCase();
-        isSearching = searchTerm.length > 0;
-        fileList.innerHTML = '';
-
-        let currentFolder = findNodeById(currentFolderId);
-        if (!currentFolder) {
-            currentFolderId = 'root';
-            currentFolder = findNodeById('root');
-        }
-
-        let itemsToRender = [];
-        if (isSearching) {
-            fileList.className = 'list-view';
-            itemsToRender = performSearch(searchTerm);
-            breadcrumbs.innerHTML = `<span>Resultados da busca por: <strong>"${searchInput.value.trim()}"</strong></span>`;
-        } else {
-            fileList.className = 'grid-view';
-            itemsToRender = currentFolder.children;
-            renderBreadcrumbs();
-        }
-
-        sortItems(itemsToRender);
-        
-        if (itemsToRender.length === 0 && !isSearching) {
-             fileList.innerHTML = `<div style="text-align: center; padding: 50px; color: var(--color-text-secondary);">
-                <i class="fas fa-folder-open fa-3x" style="margin-bottom: 16px;"></i>
-                <p>Esta pasta está vazia.</p>
-            </div>`;
-        } else {
-            itemsToRender.forEach(item => renderItem(item, isSearching));
-        }
-        
-        if (itemsToRender.length === 0) {
-            focusedItemId = null;
-        } else if (focusedItemId && !itemsToRender.some(item => item.id === focusedItemId)) {
-            focusedItemId = itemsToRender[0].id;
-        }
-
-        updateFocusAndSelectionStyles();
-        updateToolbar();
+    .toolbar-group {
+        flex-direction: row; /* Mantém botões lado a lado no grupo */
+        justify-content: center;
+    }
+    .toolbar-group button {
+        flex-grow: 1; /* Faz os botões dividirem o espaço */
     }
 
-    function renderItem(item, isSearchView = false) {
-        const itemElement = document.createElement('div');
-        itemElement.dataset.id = item.id;
-        let iconHtml;
-
-        if (item.type === 'folder') {
-            iconHtml = '<i class="fas fa-folder"></i>';
-        } else if (item.subtype === 'text') {
-            iconHtml = '<i class="fas fa-file-alt"></i>';
-        } else if (item.subtype === 'spreadsheet') {
-            iconHtml = `
-                <span class="fa-stack fa-file-excel-stacked">
-                    <i class="fas fa-file"></i>
-                    <i class="fas fa-table"></i>
-                </span>`;
-        } else {
-            iconHtml = '<i class="fas fa-file"></i>';
-        }
-
-        if (isSearchView) {
-            itemElement.className = 'search-result-item';
-            const path = getItemPath(item.id);
-            itemElement.innerHTML = `
-                <div class="item-icon">${iconHtml}</div>
-                <div class="item-details">
-                    <span class="item-name">${item.name}</span>
-                    <span class="item-path">${path}</span>
-                </div>`;
-        } else {
-            itemElement.className = 'file-item';
-            itemElement.draggable = true;
-            itemElement.innerHTML = `<div class="file-item-inner">${iconHtml}<span class="item-name">${item.name}</span></div>`;
-        }
-        fileList.appendChild(itemElement);
+    #breadcrumbs {
+        padding: 12px 16px;
+        font-size: 0.8em;
     }
-    
-    function renderBreadcrumbs() {
-        breadcrumbs.innerHTML = '';
-        let path = [];
-        let current = findNodeById(currentFolderId);
-        while (current) {
-            path.unshift(current);
-            current = (current.id === 'root') ? null : findParentNode(current.id);
-        }
-        path.forEach((node, index) => {
-            if (index < path.length - 1) {
-                const link = document.createElement('a');
-                link.href = '#';
-                link.className = 'breadcrumb-link';
-                if (node.id === 'root') {
-                    link.innerHTML = `<i class="fas fa-home"></i> <span>${node.name}</span>`;
-                } else {
-                    link.textContent = node.name;
-                }
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    currentFolderId = node.id;
-                    selectedItemIds = [];
-                    render();
-                };
-                breadcrumbs.appendChild(link);
-                breadcrumbs.insertAdjacentHTML('beforeend', '<span class="breadcrumb-separator" style="color: var(--color-border); margin: 0 4px;">/</span>');
-            } else {
-                const currentEl = document.createElement('span');
-                currentEl.className = 'breadcrumb-current';
-                currentEl.textContent = node.name;
-                breadcrumbs.appendChild(currentEl);
-            }
-        });
+    #file-list {
+        padding: 16px;
     }
-    
-    function saveFileSystem() {
-        try {
-            localStorage.setItem(LS_KEY, JSON.stringify(fileSystem));
-        } catch (error) {
-            console.error("Erro ao salvar no LocalStorage:", error);
-            showConfirmModal('Erro de Salvamento', 'Não foi possível salvar as alterações. O armazenamento local pode estar cheio.', false);
-        }
+    /* Grade de arquivos mais compacta */
+    .grid-view {
+        grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+        gap: 10px;
+    }
+    .file-item .fa-folder, .file-item .fa-file-alt, .file-item .fa-file, .file-item .fa-file-excel-stacked {
+        font-size: 2.8em; /* Ícones menores */
+    }
+    .item-name {
+        font-size: 0.8em; /* Texto menor */
     }
 
-    function createInitialFileSystem() {
-        fileSystem = {
-            root: { id: 'root', name: 'Raiz', type: 'folder', children: [], createdAt: Date.now(), updatedAt: Date.now() }
-        };
-        currentFolderId = 'root';
-        selectedItemIds = [];
-        focusedItemId = null;
+    /* Rodapé empilhado */
+    .footer-nav {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .footer-separator {
+        display: none;
     }
 
-    function loadFileSystem() {
-        const data = localStorage.getItem(LS_KEY);
-        if (data) {
-            try {
-                const parsedFS = JSON.parse(data);
-                if (parsedFS && parsedFS.root && parsedFS.root.id === 'root') {
-                    fileSystem = parsedFS;
-                    currentFolderId = 'root';
-                    selectedItemIds = [];
-                    focusedItemId = null;
-                    return;
-                }
-            } catch (error) {
-                console.error("Erro ao carregar dados do LocalStorage, iniciando um novo sistema.", error);
-            }
-        }
-        createInitialFileSystem();
+    /* Tipografia de conteúdo mais legível no mobile */
+    .page-content {
+        padding: 24px 16px;
     }
+    .page-content h1 { font-size: 1.5em; }
+    .page-content h2 { font-size: 1.2em; }
 
-    function findNodeById(id, node = fileSystem.root) {
-        if (!node) return null;
-        if (node.id === id) return node;
-        if (node.type === 'folder') {
-            for (const child of node.children) {
-                const found = findNodeById(id, child);
-                if (found) return found;
-            }
-        }
-        return null;
+    /* Ajustes finos nos modais */
+    .modal-content {
+        padding: 16px;
+        width: 95%;
     }
-
-    function findParentNode(childId, node = fileSystem.root) {
-        if (node.type !== 'folder') return null;
-        for (const child of node.children) {
-            if (child.id === childId) return node;
-            const found = findParentNode(childId, child);
-            if (found) return found;
-        }
-        return null;
+    .modal-actions {
+        flex-direction: column-reverse; /* Botão primário fica em cima */
+        gap: 10px;
     }
-
-    function getItemPath(id) {
-        let path = [];
-        let current = findNodeById(id);
-        let parent = findParentNode(id);
-        while (parent) {
-            path.unshift(parent.name);
-            current = parent;
-            parent = findParentNode(current.id);
-        }
-        return path.join(' / ');
+    .modal-actions button {
+        width: 100%;
+        margin: 0;
+        justify-content: center;
     }
-    
-    function setupEventListeners() {
-        fileList.addEventListener('click', handleItemSelection);
-        fileList.addEventListener('dblclick', handleItemOpen);
-        fileList.addEventListener('contextmenu', handleItemContextMenu);
-        
-        fileList.addEventListener('dragstart', e => {
-            const item = e.target.closest('.file-item');
-            if (item) e.dataTransfer.setData('text/plain', item.dataset.id);
-        });
-        fileList.addEventListener('dragover', e => {
-            e.preventDefault();
-            const item = e.target.closest('.file-item');
-            if (item && item.querySelector('.fa-folder')) {
-                item.querySelector('.file-item-inner')?.classList.add('drop-target');
-            }
-        });
-        fileList.addEventListener('dragleave', e => {
-            e.target.closest('.file-item')?.querySelector('.file-item-inner')?.classList.remove('drop-target');
-        });
-        fileList.addEventListener('drop', e => {
-            e.preventDefault();
-            const targetElement = e.target.closest('.file-item');
-            targetElement?.querySelector('.file-item-inner')?.classList.remove('drop-target');
-            const draggedId = e.dataTransfer.getData('text/plain');
-            if (targetElement && draggedId && draggedId !== targetElement.dataset.id) {
-                const targetNode = findNodeById(targetElement.dataset.id);
-                if (targetNode && targetNode.type === 'folder') {
-                    const originalParent = findParentNode(draggedId);
-                    const itemToMove = originalParent.children.find(c => c.id === draggedId);
-                    if (!targetNode.children.some(c => c.name.toLowerCase() === itemToMove.name.toLowerCase())) {
-                        originalParent.children = originalParent.children.filter(c => c.id !== draggedId);
-                        targetNode.children.push(itemToMove);
-                        saveFileSystem();
-                        render();
-                    } else {
-                        showConfirmModal('Erro ao Mover', `Já existe um item chamado "${itemToMove.name}" na pasta de destino.`, false);
-                    }
-                }
-            }
-        });
-        
-        document.addEventListener('keydown', handleGlobalKeyDown);
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#context-menu')) contextMenu.element.classList.add('hidden');
-        });
-        searchInput.addEventListener('input', () => { focusedItemId = null; render(); });
-        sortSelect.addEventListener('change', e => {
-            const [by, order] = e.target.value.split('-');
-            sortState = { by, order };
-            render();
-        });
-        themeToggle.addEventListener('click', toggleTheme);
-
-        toolbar.newFolder.addEventListener('click', () => createNewItem('folder'));
-        toolbar.newTextFile.addEventListener('click', () => createNewItem('file', 'text'));
-        toolbar.newSpreadsheet.addEventListener('click', () => createNewItem('file', 'spreadsheet'));
-        toolbar.rename.addEventListener('click', () => selectedItemIds.length === 1 && renameSelectedItem(selectedItemIds[0]));
-        toolbar.delete.addEventListener('click', deleteSelectedItems);
-        toolbar.importFileBtn.addEventListener('click', () => fileImportInput.click());
-        fileImportInput.addEventListener('change', handleFileImport);
-        toolbar.resetSystem.addEventListener('click', resetSystem);
-
-        textEditorModal.closeBtn.addEventListener('click', closeTextEditorModal);
-        textEditorModal.pane.addEventListener('click', (e) => e.target === textEditorModal.pane && closeTextEditorModal());
-        spreadsheetEditorModal.closeBtn.addEventListener('click', closeSpreadsheetEditorModal);
-        spreadsheetEditorModal.pane.addEventListener('click', (e) => e.target === spreadsheetEditorModal.pane && closeSpreadsheetEditorModal());
-        spreadsheetEditorModal.container.addEventListener('paste', handleSpreadsheetPaste);
-    }
-
-    function handleItemSelection(e) {
-        contextMenu.element.classList.add('hidden');
-        const target = e.target.closest('.file-item, .search-result-item');
-        if (!target) {
-            if (!e.target.closest('#file-list')) return;
-            selectedItemIds = [];
-            focusedItemId = null;
-        } else {
-            const id = target.dataset.id;
-            const isCtrl = e.ctrlKey || e.metaKey;
-            focusedItemId = id;
-            if (!isCtrl) {
-                selectedItemIds = [id];
-            } else {
-                selectedItemIds.includes(id) ? selectedItemIds = selectedItemIds.filter(i => i !== id) : selectedItemIds.push(id);
-            }
-        }
-        updateFocusAndSelectionStyles();
-        updateToolbar();
-    }
-
-    function handleItemOpen(e) {
-        const target = e.target.closest('.file-item, .search-result-item');
-        if (target) openItem(target.dataset.id);
-    }
-
-    function openItem(id) {
-        const node = findNodeById(id);
-        if (node.type === 'folder') {
-            currentFolderId = id;
-            searchInput.value = '';
-            selectedItemIds = [];
-            focusedItemId = null;
-            render();
-        } else {
-            openFile(node);
-        }
-    }
-
-    function handleItemContextMenu(e) {
-        e.preventDefault();
-        const target = e.target.closest('.file-item, .search-result-item');
-        if (!target) return;
-
-        const id = target.dataset.id;
-        const node = findNodeById(id);
-        if (!node) return;
-
-        if (!selectedItemIds.includes(id)) {
-            selectedItemIds = [id];
-            focusedItemId = id;
-            updateFocusAndSelectionStyles();
-            updateToolbar();
-        }
-
-        const oldMenu = contextMenu.element;
-        const newMenu = oldMenu.cloneNode(true);
-        oldMenu.parentNode.replaceChild(newMenu, oldMenu);
-        contextMenu.element = newMenu;
-        
-        contextMenu.open = newMenu.querySelector('#context-open');
-        contextMenu.download = newMenu.querySelector('#context-download');
-        contextMenu.rename = newMenu.querySelector('#context-rename');
-        contextMenu.delete = newMenu.querySelector('#context-delete');
-
-        if (node.type === 'folder') {
-            contextMenu.download.innerHTML = '<i class="fas fa-file-archive"></i> Baixar Pasta (.zip)';
-        } else {
-            contextMenu.download.innerHTML = '<i class="fas fa-download"></i> Baixar Arquivo';
-        }
-
-        contextMenu.download.onclick = () => {
-            if (node.type === 'folder') {
-                downloadFolderAsZip(node);
-            } else {
-                downloadFile(node);
-            }
-            contextMenu.element.classList.add('hidden');
-        };
-
-        contextMenu.open.onclick = () => { openItem(id); contextMenu.element.classList.add('hidden'); };
-        contextMenu.rename.onclick = () => { renameSelectedItem(id); contextMenu.element.classList.add('hidden'); };
-        contextMenu.delete.onclick = () => { deleteSelectedItems(); contextMenu.element.classList.add('hidden'); };
-        
-        contextMenu.element.style.left = `${e.clientX}px`;
-        contextMenu.element.style.top = `${e.clientY}px`;
-        contextMenu.element.classList.remove('hidden');
-    }
-
-    function handleGlobalKeyDown(e) {
-        if (document.querySelector('.modal-pane:not(.hidden)')) return;
-
-        if (mainAppContainer.classList.contains('view-hidden')) return;
-
-        const items = Array.from(fileList.children).filter(el => el.classList.contains('file-item'));
-        if (items.length === 0) return;
-        
-        const currentIndex = items.findIndex(item => item.dataset.id === focusedItemId);
-        let nextIndex = currentIndex;
-        
-        if (e.key.startsWith('Arrow')) {
-            e.preventDefault();
-            const cols = isSearching ? 1 : Math.floor(fileList.offsetWidth / items[0].offsetWidth);
-            if (e.key === 'ArrowRight' && currentIndex < items.length - 1) nextIndex++;
-            if (e.key === 'ArrowLeft' && currentIndex > 0) nextIndex--;
-            if (e.key === 'ArrowDown' && currentIndex + cols < items.length) nextIndex += cols;
-            if (e.key === 'ArrowUp' && currentIndex - cols >= 0) nextIndex -= cols;
-        } else if (e.key === 'Home') {
-            e.preventDefault(); nextIndex = 0;
-        } else if (e.key === 'End') {
-            e.preventDefault(); nextIndex = items.length - 1;
-        } else if (e.key === 'Enter') {
-            e.preventDefault(); if (focusedItemId) openItem(focusedItemId);
-        } else if (e.key === 'F2' && focusedItemId) {
-            e.preventDefault(); renameSelectedItem(focusedItemId);
-        } else if (e.key === 'Delete' && selectedItemIds.length > 0) {
-            e.preventDefault(); deleteSelectedItems();
-        } else {
-            return;
-        }
-
-        if (nextIndex > -1 && nextIndex < items.length && nextIndex !== currentIndex) {
-            focusedItemId = items[nextIndex].dataset.id;
-            selectedItemIds = [focusedItemId];
-            updateFocusAndSelectionStyles();
-            updateToolbar();
-            items[nextIndex]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-    }
-
-    function showPromptModal(title, label, defaultValue = '') {
-        return new Promise((resolve) => {
-            promptModal.title.textContent = title;
-            promptModal.label.textContent = label;
-            promptModal.input.value = defaultValue;
-            promptModal.pane.classList.remove('hidden');
-            promptModal.input.focus();
-            promptModal.input.select();
-            const close = (value) => {
-                promptModal.pane.classList.add('hidden');
-                removeListeners();
-                resolve(value);
-            };
-            const okListener = () => close(promptModal.input.value);
-            const cancelListener = () => close(null);
-            const paneListener = (e) => { if (e.target === promptModal.pane) close(null); };
-            const keydownListener = (e) => {
-                if (e.key === 'Enter') { e.preventDefault(); okListener(); }
-                if (e.key === 'Escape') cancelListener();
-            };
-            const removeListeners = () => {
-                promptModal.okBtn.removeEventListener('click', okListener);
-                promptModal.cancelBtn.removeEventListener('click', cancelListener);
-                promptModal.pane.removeEventListener('click', paneListener);
-                document.removeEventListener('keydown', keydownListener, true);
-            };
-            promptModal.okBtn.addEventListener('click', okListener);
-            promptModal.cancelBtn.addEventListener('click', cancelListener);
-            promptModal.pane.addEventListener('click', paneListener);
-            document.addEventListener('keydown', keydownListener, true);
-        });
-    }
-
-    function showConfirmModal(title, message, isDestructive = true) {
-        return new Promise((resolve) => {
-            confirmModal.title.textContent = title;
-            document.getElementById('confirm-message').innerHTML = message;
-            confirmModal.okBtn.className = isDestructive ? 'btn-danger' : 'btn-primary';
-            confirmModal.okBtn.textContent = title.toLowerCase().includes('exclu') ? 'Excluir' : title.toLowerCase().includes('resetar') ? 'Resetar' : 'Confirmar';
-            confirmModal.pane.classList.remove('hidden');
-            const close = (value) => {
-                confirmModal.pane.classList.add('hidden');
-                removeListeners();
-                resolve(value);
-            };
-            const okListener = () => close(true);
-            const cancelListener = () => close(false);
-            const paneListener = (e) => { if (e.target === confirmModal.pane) close(false); };
-            const keydownListener = (e) => { if (e.key === 'Escape') cancelListener(); };
-            const removeListeners = () => {
-                confirmModal.okBtn.removeEventListener('click', okListener);
-                confirmModal.cancelBtn.removeEventListener('click', cancelListener);
-                confirmModal.pane.removeEventListener('click', paneListener);
-                document.removeEventListener('keydown', keydownListener, true);
-            };
-            confirmModal.okBtn.addEventListener('click', okListener);
-            confirmModal.cancelBtn.addEventListener('click', cancelListener);
-            confirmModal.pane.addEventListener('click', paneListener);
-            document.addEventListener('keydown', keydownListener, true);
-        });
-    }
-
-    async function createNewItem(type, subtype = null) {
-        let title;
-        if (type === 'folder') title = 'Criar Nova Pasta';
-        else if (subtype === 'text') title = 'Criar Novo Arquivo de Texto';
-        else if (subtype === 'spreadsheet') title = 'Criar Nova Planilha';
-
-        const previousFocusedId = focusedItemId;
-        selectedItemIds = [];
-        focusedItemId = null;
-        updateFocusAndSelectionStyles();
-        
-        const name = await showPromptModal(title, 'Nome:');
-        
-        if (!name || name.trim() === '') {
-            focusedItemId = previousFocusedId;
-            if(focusedItemId) selectedItemIds = [focusedItemId];
-            render();
-            return;
-        }
-        
-        const parent = findNodeById(currentFolderId);
-        if (parent.children.some(c => c.name.toLowerCase() === name.trim().toLowerCase())) {
-            await showConfirmModal('Erro', 'Um item com este nome já existe nesta pasta.', false);
-            focusedItemId = previousFocusedId;
-            if(focusedItemId) selectedItemIds = [focusedItemId];
-            render();
-            return;
-        }
-        
-        const now = Date.now();
-        const baseItem = {
-            id: `id_${Date.now()}_${Math.random()}`,
-            name: name.trim(),
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        let newItem;
-        if (type === 'folder') {
-            newItem = { ...baseItem, type: 'folder', children: [] };
-        } else {
-            const content = (subtype === 'spreadsheet') ? Array(15).fill(null).map(() => Array(8).fill('')) : '';
-            newItem = { ...baseItem, type: 'file', subtype: subtype, content: content };
-        }
-
-        parent.children.push(newItem);
-        parent.updatedAt = now;
-        
-        focusedItemId = newItem.id;
-        selectedItemIds = [newItem.id];
-
-        saveFileSystem();
-        render();
-    }
-
-    async function renameSelectedItem(id) {
-        const node = findNodeById(id);
-        if (!node) return;
-        const newName = await showPromptModal('Renomear Item', 'Novo nome:', node.name);
-        if (newName && newName.trim() !== '' && newName.trim() !== node.name) {
-            const parent = findParentNode(id);
-            if (parent.children.some(c => c.id !== id && c.name.toLowerCase() === newName.trim().toLowerCase())) {
-                await showConfirmModal('Erro', 'Um item com este nome já existe nesta pasta.', false);
-                return;
-            }
-            node.name = newName.trim();
-            node.updatedAt = Date.now();
-            parent.updatedAt = node.updatedAt;
-            saveFileSystem();
-            render();
-        }
-    }
-    
-    async function deleteSelectedItems() {
-        if (selectedItemIds.length === 0) return;
-        const title = 'Confirmar Exclusão';
-        const message = selectedItemIds.length === 1 ?
-            `Tem certeza que deseja excluir "<strong>${findNodeById(selectedItemIds[0]).name}</strong>"?` :
-            `Tem certeza que deseja excluir <strong>${selectedItemIds.length} itens</strong>?`;
-        
-        const confirmed = await showConfirmModal(title, message);
-        if (confirmed) {
-            let parentsToUpdate = new Set();
-            selectedItemIds.forEach(id => {
-                const parentNode = findParentNode(id);
-                if (parentNode) {
-                    parentNode.children = parentNode.children.filter(child => child.id !== id);
-                    parentsToUpdate.add(parentNode);
-                }
-            });
-            parentsToUpdate.forEach(p => p.updatedAt = Date.now());
-            selectedItemIds = [];
-            focusedItemId = null;
-            saveFileSystem();
-            render();
-        }
-    }
-    
-    async function resetSystem() {
-        const confirmed = await showConfirmModal(
-            'Resetar Sistema', 
-            '<strong>Atenção:</strong> Isso apagará permanentemente todos os seus arquivos e pastas. Esta ação não pode ser desfeita. Deseja continuar?'
-        );
-
-        if (confirmed) {
-            localStorage.removeItem(LS_KEY);
-            createInitialFileSystem();
-            render();
-        }
-    }
-    
-    async function handleFileImport(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const fileName = file.name.split('.').slice(0, -1).join('.') || file.name;
-        const fileExt = file.name.split('.').pop().toLowerCase();
-
-        const parent = findNodeById(currentFolderId);
-        if (parent.children.some(c => c.name.toLowerCase() === fileName.toLowerCase())) {
-            await showConfirmModal('Erro na Importação', `Um item chamado "${fileName}" já existe nesta pasta.`, false);
-            fileImportInput.value = '';
-            return;
-        }
-
-        const reader = new FileReader();
-
-        const processFile = (content, subtype) => {
-            const now = Date.now();
-            const newItem = {
-                id: `id_${Date.now()}_${Math.random()}`,
-                name: fileName,
-                type: 'file',
-                subtype: subtype,
-                createdAt: now,
-                updatedAt: now,
-                content: content
-            };
-            parent.children.push(newItem);
-            parent.updatedAt = now;
-            saveFileSystem();
-            render();
-            fileImportInput.value = '';
-        };
-        
-        if (fileExt === 'txt') {
-            reader.onload = (event) => processFile(event.target.result, 'text');
-            reader.readAsText(file);
-        } else if (fileExt === 'xlsx') {
-            reader.onload = (event) => {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                processFile(json, 'spreadsheet');
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            await showConfirmModal('Formato Inválido', 'Apenas arquivos .txt e .xlsx são suportados para importação.', false);
-            fileImportInput.value = '';
-        }
-    }
-
-    async function downloadFile(node) {
-        if (node.subtype === 'text') {
-            await promptAndDownloadTextFile(node);
-        } else if (node.subtype === 'spreadsheet') {
-            downloadSpreadsheetFile(node);
-        }
-    }
-
-    async function downloadFolderAsZip(folderNode) {
-        try {
-            const zip = new JSZip();
-            const rootZipFolder = zip.folder(folderNode.name);
-
-            addFolderToZip(folderNode, rootZipFolder);
-
-            const blob = await zip.generateAsync({ type: "blob" });
-            
-            performDownload(`${folderNode.name}.zip`, blob, "application/zip");
-        } catch (error) {
-            console.error("Erro ao gerar o arquivo .zip:", error);
-            alert("Ocorreu um erro ao tentar baixar a pasta. Verifique o console para mais detalhes.");
-        }
-    }
-
-    function addFolderToZip(folderData, zipFolder) {
-        folderData.children.forEach(child => {
-            if (child.type === 'folder') {
-                const newZipFolder = zipFolder.folder(child.name);
-                addFolderToZip(child, newZipFolder);
-            } else if (child.type === 'file') {
-                if (child.subtype === 'text') {
-                    const textContent = stripHtml(child.content || '');
-                    zipFolder.file(`${child.name}.txt`, textContent);
-                } else if (child.subtype === 'spreadsheet') {
-                    const worksheet = XLSX.utils.aoa_to_sheet(child.content);
-                    const workbook = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-                    const xlsxData = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-                    zipFolder.file(`${child.name}.xlsx`, xlsxData);
-                }
-            }
-        });
-    }
-
-    function showFormatSelectModal() {
-        return new Promise((resolve) => {
-            formatSelectModal.pane.classList.remove('hidden');
-            formatSelectModal.input.focus();
-            const close = (value) => {
-                formatSelectModal.pane.classList.add('hidden');
-                removeListeners();
-                resolve(value);
-            };
-            const okListener = () => close(formatSelectModal.input.value);
-            const cancelListener = () => close(null);
-            const removeListeners = () => {
-                formatSelectModal.okBtn.removeEventListener('click', okListener);
-                formatSelectModal.cancelBtn.removeEventListener('click', cancelListener);
-            };
-            formatSelectModal.okBtn.addEventListener('click', okListener);
-            formatSelectModal.cancelBtn.addEventListener('click', cancelListener);
-        });
-    }
-
-    function stripHtml(html) {
-        const tmp = document.createElement("div");
-        tmp.innerHTML = html;
-        return tmp.textContent || tmp.innerText || "";
-    }
-
-    async function promptAndDownloadTextFile(node, useEditorContent = false) {
-        if (!node || node.type !== 'file' || node.subtype !== 'text') return;
-        const selectedFormat = await showFormatSelectModal();
-        if (!selectedFormat) return;
-
-        let content, extension, mimeType;
-        const baseHtmlContent = useEditorContent ? textEditorModal.editor.innerHTML : (node.content || '');
-        const baseTextContent = useEditorContent ? textEditorModal.editor.innerText : stripHtml(node.content || '');
-
-        switch (selectedFormat) {
-            case 'txt':
-                content = baseTextContent; extension = '.txt'; mimeType = 'text/plain;charset=utf-8';
-                break;
-            case 'doc':
-                content = `<html xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${node.name}</title></head><body>${baseHtmlContent}</body></html>`;
-                extension = '.doc'; mimeType = 'application/msword;charset=utf-8';
-                break;
-            default: return;
-        }
-        performDownload(`${node.name}${extension}`, content, mimeType);
-    }
-    
-    function downloadSpreadsheetFile(node, useEditorContent = false) {
-        const data = useEditorContent ? readSpreadsheetFromTable() : node.content;
-        const worksheet = XLSX.utils.aoa_to_sheet(data);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-        XLSX.writeFile(workbook, `${node.name}.xlsx`);
-    }
-
-    function performDownload(filename, content, mimeType) {
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click();
-        document.body.removeChild(a); URL.revokeObjectURL(url);
-    }
-    
-    function performSearch(term) {
-        const results = [];
-        function recurse(node) {
-            if (node.id !== 'root' && node.name.toLowerCase().includes(term)) {
-                results.push(node);
-            }
-            if (node.type === 'folder') { node.children.forEach(recurse); }
-        }
-        recurse(fileSystem.root);
-        return results;
-    }
-
-    function sortItems(items) {
-        const { by, order } = sortState;
-        const multiplier = order === 'asc' ? 1 : -1;
-        items.sort((a, b) => {
-            if (a.type === 'folder' && b.type !== 'folder') return -1;
-            if (a.type !== 'folder' && b.type === 'folder') return 1;
-            if (by === 'name') return a.name.localeCompare(b.name, undefined, { numeric: true }) * multiplier;
-            if (by === 'date') return (a.updatedAt - b.updatedAt) * multiplier;
-            return 0;
-        });
-    }
-
-    function initTheme() {
-        document.body.classList.remove('dark-theme');
-        themeToggle.innerHTML = `<i class="fas fa-moon"></i>`;
-    }
-
-    function toggleTheme() {
-        document.body.classList.toggle('dark-theme');
-        const isDark = document.body.classList.contains('dark-theme');
-        themeToggle.innerHTML = `<i class="fas fa-${isDark ? 'sun' : 'moon'}"></i>`;
-    }
-
-    function updateFocusAndSelectionStyles() {
-        fileList.querySelectorAll('.file-item, .search-result-item').forEach(el => {
-            const id = el.dataset.id;
-            el.classList.toggle('selected', selectedItemIds.includes(id));
-            el.classList.toggle('focused', id === focusedItemId && !isSearching);
-        });
-    }
-
-    function updateToolbar() {
-        toolbar.rename.disabled = selectedItemIds.length !== 1;
-        toolbar.delete.disabled = selectedItemIds.length === 0;
-    }
-
-    function openFile(node) {
-        if (node.subtype === 'text') {
-            openTextEditor(node);
-        } else if (node.subtype === 'spreadsheet') {
-            openSpreadsheetEditor(node);
-        }
-    }
-    
-    function openTextEditor(node) {
-        activeNode = node;
-        hasUnsavedChanges = false;
-        textEditorModal.title.textContent = node.name;
-        textEditorModal.editor.innerHTML = node.content || '';
-        updateStatusBar();
-        setupEditorToolbar();
-        textEditorModal.pane.classList.remove('hidden');
-        textEditorModal.downloadBtn.onclick = () => { promptAndDownloadTextFile(activeNode, true); };
-        textEditorModal.saveBtn.onclick = saveTextFile;
-    }
-
-    async function closeTextEditorModal() {
-        if (hasUnsavedChanges) {
-            const confirmed = await showConfirmModal('Alterações Não Salvas', 'Você tem alterações não salvas que serão perdidas. Deseja sair mesmo assim?');
-            if (!confirmed) return;
-        }
-        textEditorModal.pane.classList.add('hidden');
-        activeNode = null;
-        hasUnsavedChanges = false;
-        render(); 
-    }
-
-    function setupEditorToolbar() {
-        const toolbarContainer = textEditorModal.pane.querySelector('.editor-toolbar');
-        toolbarContainer.innerHTML = `<button data-command="bold" title="Negrito"><i class="fas fa-bold"></i></button><button data-command="italic" title="Itálico"><i class="fas fa-italic"></i></button><button data-command="underline" title="Sublinhado"><i class="fas fa-underline"></i></button><span class="toolbar-separator"></span><button data-command="insertUnorderedList" title="Lista com Marcadores"><i class="fas fa-list-ul"></i></button><button data-command="insertOrderedList" title="Lista Numerada"><i class="fas fa-list-ol"></i></button><span class="toolbar-separator"></span><button data-command="justifyLeft" title="Alinhar à Esquerda"><i class="fas fa-align-left"></i></button><button data-command="justifyCenter" title="Centralizar"><i class="fas fa-align-center"></i></button><button data-command="justifyRight" title="Alinhar à Direita"><i class="fas fa-align-right"></i></button><span class="toolbar-separator"></span><button data-command="removeFormat" title="Limpar Formatação"><i class="fas fa-eraser"></i></button>`;
-        toolbarContainer.querySelectorAll('button').forEach(button => {
-            button.onclick = (e) => { e.preventDefault(); document.execCommand(e.currentTarget.dataset.command, false, null); textEditorModal.editor.focus(); };
-        });
-        textEditorModal.editor.oninput = () => { hasUnsavedChanges = true; updateStatusBar(); };
-        document.onselectionchange = () => {
-            if (!textEditorModal.pane.contains(document.activeElement)) return;
-            toolbarContainer.querySelectorAll('button[data-command]').forEach(button => {
-                document.queryCommandState(button.dataset.command) ? button.classList.add('active') : button.classList.remove('active');
-            });
-        };
-    }
-
-    function updateStatusBar() {
-        const text = textEditorModal.editor.innerText;
-        document.getElementById('word-count').textContent = `Palavras: ${text.trim() === '' ? 0 : text.trim().split(/\s+/).length}`;
-        document.getElementById('char-count').textContent = `Caracteres: ${text.length}`;
-    }
-
-    function saveTextFile() {
-        if (activeNode && activeNode.subtype === 'text') {
-            const now = Date.now();
-            activeNode.content = textEditorModal.editor.innerHTML;
-            activeNode.updatedAt = now;
-            findParentNode(activeNode.id).updatedAt = now;
-            saveFileSystem();
-            hasUnsavedChanges = false;
-            
-            const btn = textEditorModal.saveBtn;
-            btn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
-            btn.classList.add('saved');
-            setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-save"></i> Salvar';
-                btn.classList.remove('saved');
-            }, 2000);
-        }
-    }
-
-    // --- LÓGICA DO EDITOR DE PLANILHA ---
-
-    function openSpreadsheetEditor(node) {
-        activeNode = node;
-        hasUnsavedChanges = false;
-        spreadsheetEditorModal.title.textContent = node.name;
-        renderSpreadsheetTable(spreadsheetEditorModal.container, node.content);
-        spreadsheetEditorModal.pane.classList.remove('hidden');
-        
-        spreadsheetEditorModal.downloadBtn.onclick = () => downloadSpreadsheetFile(activeNode, true);
-        spreadsheetEditorModal.saveBtn.onclick = saveSpreadsheetFile;
-    }
-
-    async function closeSpreadsheetEditorModal() {
-        if (hasUnsavedChanges) {
-            const confirmed = await showConfirmModal('Alterações Não Salvas', 'Você tem alterações não salvas que serão perdidas. Deseja sair mesmo assim?');
-            if (!confirmed) return;
-        }
-        spreadsheetEditorModal.pane.classList.add('hidden');
-        spreadsheetEditorModal.container.innerHTML = '';
-        activeNode = null;
-        hasUnsavedChanges = false;
-        render();
-    }
-    
-    function renderSpreadsheetTable(container, data) {
-        container.innerHTML = '';
-        const table = document.createElement('table');
-        table.className = 'spreadsheet-table';
-
-        const cols = data.length > 0 && data[0] ? data[0].length : 8;
-
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const emptyTh = document.createElement('th');
-        headerRow.appendChild(emptyTh);
-        for (let i = 0; i < cols; i++) {
-            const th = document.createElement('th');
-            th.textContent = String.fromCharCode(65 + i);
-            headerRow.appendChild(th);
-        }
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        const tbody = document.createElement('tbody');
-        data.forEach((rowData, rowIndex) => {
-            const tr = document.createElement('tr');
-            const rowHeaderTd = document.createElement('td');
-            rowHeaderTd.textContent = rowIndex + 1;
-            rowHeaderTd.style.fontWeight = '600';
-            rowHeaderTd.style.backgroundColor = 'var(--color-bg-hover)';
-            tr.appendChild(rowHeaderTd);
-
-            rowData.forEach((cellData, colIndex) => {
-                const td = document.createElement('td');
-                td.textContent = cellData;
-                td.contentEditable = true;
-                td.dataset.row = rowIndex;
-                td.dataset.col = colIndex;
-                td.addEventListener('input', () => { hasUnsavedChanges = true; });
-                
-                if (rowIndex === data.length - 1) {
-                    td.addEventListener('focus', (e) => {
-                        const currentData = readSpreadsheetFromTable();
-                        if (activeNode && currentData.length === activeNode.content.length) {
-                             activeNode.content.push(Array(cols).fill(''));
-                             renderSpreadsheetTable(container, activeNode.content);
-                             const newFocusedCell = container.querySelector(`td[data-row="${e.target.dataset.row}"][data-col="${e.target.dataset.col}"]`);
-                             newFocusedCell?.focus();
-                        }
-                    }, { once: true });
-                }
-                tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
-        });
-        table.appendChild(tbody);
-        container.appendChild(table);
-    }
-    
-    function handleSpreadsheetPaste(event) {
-        const targetCell = event.target.closest('td[contenteditable="true"]');
-        if (!targetCell) return;
-
-        event.preventDefault();
-        const pastedText = (event.clipboardData || window.clipboardData).getData('text/plain');
-        
-        const rows = pastedText.split(/\r?\n/).filter(row => row);
-        if (rows.length === 0) return;
-
-        const parsedData = rows.map(row => row.split('\t'));
-
-        const startRow = parseInt(targetCell.dataset.row, 10);
-        const startCol = parseInt(targetCell.dataset.col, 10);
-
-        if (isNaN(startRow) || isNaN(startCol)) return;
-
-        let currentData = activeNode.content;
-        const requiredRows = startRow + parsedData.length;
-        let maxCols = currentData.length > 0 && currentData[0] ? currentData[0].length : 0;
-
-        parsedData.forEach(row => { maxCols = Math.max(maxCols, startCol + row.length); });
-        while (currentData.length < requiredRows) { currentData.push(Array(maxCols).fill('')); }
-        currentData.forEach(row => { while (row.length < maxCols) { row.push(''); } });
-        
-        parsedData.forEach((rowData, r_idx) => {
-            rowData.forEach((cellData, c_idx) => {
-                const target_r = startRow + r_idx;
-                const target_c = startCol + c_idx;
-                if(currentData[target_r] !== undefined) {
-                    currentData[target_r][target_c] = cellData;
-                }
-            });
-        });
-        
-        hasUnsavedChanges = true;
-        renderSpreadsheetTable(spreadsheetEditorModal.container, currentData);
-    }
-    
-    function readSpreadsheetFromTable() {
-        const table = spreadsheetEditorModal.container.querySelector('table');
-        const data = [];
-        if (!table) return data;
-        table.querySelectorAll('tbody tr').forEach(tr => {
-            const rowData = [];
-            tr.querySelectorAll('td[contenteditable="true"]').forEach(td => {
-                rowData.push(td.innerText);
-            });
-            data.push(rowData);
-        });
-        return data;
-    }
-    
-    function saveSpreadsheetFile() {
-        if (activeNode && activeNode.subtype === 'spreadsheet') {
-            let newData = readSpreadsheetFromTable();
-            while (newData.length > 1 && newData[newData.length - 1].every(cell => cell.trim() === '')) {
-                newData.pop();
-            }
-            activeNode.content = newData;
-
-            const now = Date.now();
-            activeNode.updatedAt = now;
-            findParentNode(activeNode.id).updatedAt = now;
-            saveFileSystem();
-            hasUnsavedChanges = false;
-
-            const btn = spreadsheetEditorModal.saveBtn;
-            btn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
-            btn.classList.add('saved');
-            setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-save"></i> Salvar';
-                btn.classList.remove('saved');
-            }, 2000);
-        }
-    }
-    
-    // --- LÓGICA DE NAVEGAÇÃO DE PÁGINAS ESTÁTICAS ---
-    function setupNavigation() {
-        const backButtonHtml = `<a href="#" class="back-to-app-btn"><i class="fas fa-arrow-left"></i> Voltar ao Organizador</a>`;
-    
-        staticPageContainers.privacy.innerHTML = `
-            <h1>Política de Privacidade</h1>
-            <p><strong>Última atualização:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-            <p>A sua privacidade é importante para nós. É política do Organizador de Arquivos respeitar a sua privacidade em relação a qualquer informação sua que possamos coletar em nosso site.</p>
-            <h2>1. Informações que Coletamos</h2>
-            <p>Este aplicativo é uma ferramenta que funciona inteiramente no seu navegador (client-side). Todas as informações, arquivos e estruturas de pastas que você cria são armazenados localmente no seu dispositivo, utilizando a tecnologia de <strong>LocalStorage</strong> do seu navegador.</p>
-            <p><strong>Nós não coletamos, transmitimos, armazenamos ou temos acesso a nenhum dos seus dados.</strong> Toda a sua informação permanece exclusivamente no seu computador.</p>
-            <h2>2. Como Usamos as Informações</h2>
-            <p>Como não coletamos suas informações, nós não as usamos para nenhum propósito. A funcionalidade de "Resetar Sistema" simplesmente limpa os dados do LocalStorage do seu navegador para este site, uma ação que você mesmo executa.</p>
-            <h2>3. Segurança</h2>
-            <p>A segurança dos seus dados depende da segurança do seu próprio computador e navegador. Recomendamos manter seu sistema operacional e navegador atualizados. Como os dados não são enviados pela internet, eles estão protegidos contra interceptação online.</p>
-            <h2>4. Links para Outros Sites</h2>
-            <p>Nosso site pode conter links para sites externos que não são operados por nós. Esteja ciente de que não temos controle sobre o conteúdo e práticas desses sites e não podemos aceitar responsabilidade por suas respectivas políticas de privacidade.</p>
-            <h2>5. Alterações nesta Política de Privacidade</h2>
-            <p>Podemos atualizar nossa Política de Privacidade de tempos em tempos. Aconselhamos que você revise esta página periodicamente para quaisquer alterações. A data da última atualização será sempre indicada no topo desta página.</p>
-            ${backButtonHtml}`;
-    
-        staticPageContainers.terms.innerHTML = `
-            <h1>Termos de Uso</h1>
-            <p><strong>Última atualização:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-            <p>Ao acessar e usar o site Organizador de Arquivos, você concorda em cumprir estes termos de serviço, todas as leis e regulamentos aplicáveis e concorda que é responsável pelo cumprimento de todas as leis locais aplicáveis.</p>
-            <h2>1. Uso da Licença</h2>
-            <p>É concedida permissão para usar o aplicativo Organizador de Arquivos para fins pessoais e comerciais. Esta é a concessão de uma licença, não uma transferência de título, e sob esta licença você não pode:</p>
-            <ul>
-                <li>Tentar descompilar ou fazer engenharia reversa de qualquer software contido no site;</li>
-                <li>Remover quaisquer direitos autorais ou outras notações de propriedade dos materiais.</li>
-            </ul>
-            <p>Esta licença será automaticamente rescindida se você violar alguma dessas restrições e poderá ser rescindida por nós a qualquer momento.</p>
-            <h2>2. Isenção de Responsabilidade</h2>
-            <p>O Organizador de Arquivos é fornecido "como está". Não oferecemos garantias, expressas ou implícitas, e por este meio isentamos e negamos todas as outras garantias, incluindo, sem limitação, garantias implícitas ou condições de comercialização, adequação a um fim específico ou não violação de propriedade intelectual ou outra violação de direitos.</p>
-            <p>Como todos os dados são armazenados localmente no seu dispositivo, não nos responsabilizamos por qualquer perda de dados. É sua responsabilidade garantir backups adequados, se necessário.</p>
-            <h2>3. Limitações</h2>
-            <p>Em nenhum caso o Organizador de Arquivos ou seus fornecedores serão responsáveis por quaisquer danos (incluindo, sem limitação, danos por perda de dados ou lucro, ou devido a interrupção dos negócios) decorrentes do uso ou da incapacidade de usar os materiais no site, mesmo que o Organizador de Arquivos ou um representante autorizado tenha sido notificado oralmente ou por escrito da possibilidade de tais danos.</p>
-            <h2>4. Lei Aplicável</h2>
-            <p>Estes termos e condições são regidos e interpretados de acordo com as leis do Brasil e você se submete irrevogavelmente à jurisdição exclusiva dos tribunais naquele estado ou localidade.</p>
-            ${backButtonHtml}`;
-    
-        staticPageContainers.contact.innerHTML = `
-            <h1>Página de Contato</h1>
-            <p>Tem alguma dúvida, sugestão ou feedback? Adoraríamos ouvir de você. Por favor, preencha o formulário abaixo. Como este é um projeto de demonstração sem um servidor backend, o formulário simulará o envio e oferecerá uma opção de envio por e-mail.</p>
-            <form id="contact-form" class="contact-form">
-                <div class="form-group">
-                    <label for="contact-name">Seu Nome</label>
-                    <input type="text" id="contact-name" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="contact-email">Seu Email</label>
-                    <input type="email" id="contact-email" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="contact-message">Mensagem</label>
-                    <textarea id="contact-message" class="form-control" required></textarea>
-                </div>
-                <button type="submit" class="submit-btn">Enviar Mensagem</button>
-            </form>
-            <div id="contact-success-message" class="hidden">
-                <p><strong>Obrigado pelo seu contato!</strong></p>
-                <p>Esta é uma aplicação de demonstração e sua mensagem não foi enviada para um servidor. Para entrar em contato real, por favor, envie um e-mail para <a href="mailto:contato@exemplo.com">contato@exemplo.com</a> com o conteúdo da sua mensagem.</p>
-                <a href="#" id="reset-contact-form" style="display: inline-block; margin-top: 1em;">Enviar outra mensagem</a>
-            </div>
-            ${backButtonHtml}`;
-    
-        staticPageContainers.cookies.innerHTML = `
-            <h1>Política de Cookies</h1>
-            <p><strong>Última atualização:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-            <p>Este site utiliza tecnologias de armazenamento local do navegador para fornecer suas funcionalidades essenciais. Esta página explica o que são essas tecnologias e como as usamos.</p>
-            <h2>1. O que é LocalStorage?</h2>
-            <p>LocalStorage é um mecanismo de armazenamento da web que permite que sites e aplicativos salvem dados (pares chave/valor) em um navegador da web sem data de expiração. Isso significa que os dados armazenados no navegador persistirão mesmo depois que a janela do navegador for fechada.</p>
-            <p>É funcionalmente semelhante a cookies, mas é usado especificamente para armazenar dados do lado do cliente e não é enviado automaticamente para um servidor a cada solicitação HTTP, tornando-o mais seguro e eficiente para aplicações que rodam inteiramente no navegador, como esta.</p>
-            <h2>2. Como Usamos o LocalStorage</h2>
-            <p>Nós usamos o LocalStorage para uma única finalidade:</p>
-            <ul>
-                <li><strong>Salvar seu Sistema de Arquivos:</strong> Toda a estrutura de pastas, arquivos e seu conteúdo que você cria no Organizador de Arquivos são salvos no LocalStorage do seu navegador. Isso permite que você feche a página e, ao retornar, encontre seu trabalho exatamente como o deixou.</li>
-            </ul>
-            <h2>3. Cookies de Terceiros</h2>
-            <p>Este site <strong>não utiliza</strong> cookies de terceiros para rastreamento, publicidade ou análise. Todo o código e os recursos (como fontes e ícones) são carregados de redes de distribuição de conteúdo (CDNs) conhecidas, mas não definem cookies de rastreamento por meio do nosso site.</p>
-            <h2>4. Gerenciando Seus Dados</h2>
-            <p>Você tem controle total sobre os dados armazenados. Você pode:</p>
-            <ul>
-                <li>Usar a função "Resetar Sistema" dentro do aplicativo para apagar todos os dados relacionados a este site.</li>
-                <li>Limpar manualmente o cache e os dados do site através das configurações do seu navegador.</li>
-            </ul>
-            ${backButtonHtml}`;
-    
-        function showPage(pageKey) {
-            window.scrollTo(0, 0);
-
-            if (pageKey === 'app') {
-                mainAppContainer.classList.remove('view-hidden');
-                pageViewContainer.classList.add('view-hidden');
-                 Object.values(staticPageContainers).forEach(p => p.classList.remove('active'));
-            } else {
-                mainAppContainer.classList.add('view-hidden');
-                pageViewContainer.classList.remove('view-hidden');
-                
-                Object.values(staticPageContainers).forEach(p => p.classList.remove('active'));
-                
-                if (staticPageContainers[pageKey]) {
-                    staticPageContainers[pageKey].classList.add('active');
-                }
-            }
-        }
-    
-        navLinks.privacy.addEventListener('click', (e) => { e.preventDefault(); showPage('privacy'); });
-        navLinks.terms.addEventListener('click', (e) => { e.preventDefault(); showPage('terms'); });
-        navLinks.contact.addEventListener('click', (e) => { e.preventDefault(); showPage('contact'); });
-        navLinks.cookies.addEventListener('click', (e) => { e.preventDefault(); showPage('cookies'); });
-    
-        document.body.addEventListener('click', (e) => {
-            if (e.target.matches('.back-to-app-btn') || e.target.closest('.back-to-app-btn')) {
-                e.preventDefault();
-                showPage('app');
-            }
-        });
-        
-        const contactForm = document.getElementById('contact-form');
-        const successMessage = document.getElementById('contact-success-message');
-        const resetContactBtn = document.getElementById('reset-contact-form');
-
-        if (contactForm && successMessage && resetContactBtn) {
-            contactForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                successMessage.classList.remove('hidden');
-                contactForm.classList.add('hidden');
-            });
-            resetContactBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                contactForm.reset();
-                successMessage.classList.add('hidden');
-                contactForm.classList.remove('hidden');
-            });
-        }
-
-        // Inicia mostrando a aplicação principal
-        showPage('app');
-    }
-
-    init();
-});
+}
