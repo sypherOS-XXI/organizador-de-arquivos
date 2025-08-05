@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- CONTAINER PRINCIPAL DO APP -->
     <div class="file-explorer-container">
         <div class="file-explorer">
             <header>
@@ -163,6 +164,27 @@
     <!-- INPUT OCULTO PARA IMPORTAÇÃO -->
     <input type="file" id="file-import-input" style="display: none;" accept=".txt,.xlsx">
 
+    <!-- CONTAINER PARA PÁGINAS ESTÁTICAS -->
+    <div class="page-view-container">
+        <div id="privacy-policy-page" class="page-content"></div>
+        <div id="terms-of-use-page" class="page-content"></div>
+        <div id="contact-page" class="page-content"></div>
+        <div id="cookies-policy-page" class="page-content"></div>
+    </div>
+
+    <!-- RODAPÉ DO SITE -->
+    <footer class="site-footer">
+        <nav class="footer-nav">
+            <a href="#" id="nav-privacy-policy">Política de Privacidade</a>
+            <span class="footer-separator">|</span>
+            <a href="#" id="nav-terms-of-use">Termos de Uso</a>
+            <span class="footer-separator">|</span>
+            <a href="#" id="nav-contact">Contato</a>
+            <span class="footer-separator">|</span>
+            <a href="#" id="nav-cookies-policy">Política de Cookies</a>
+        </nav>
+    </footer>
+    
     <script src="main.js"></script>
 </body>
 </html>
